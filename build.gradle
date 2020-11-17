@@ -1,0 +1,153 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url 'https://nexus.bto.tf/repository/pe-maven/'
+            credentials {
+                username usernameNexusPE
+                password passwordNexusPE
+            }
+        }
+    }
+    dependencies {
+        classpath 'com.betomorrow.gradle:xamarin-check-plugin:2.3.10'
+        classpath 'com.betomorrow.gradlelib:xamarin-library-plugin:2.0.12'
+        classpath 'com.betomorrow.gradlelib:xamarin-nunit-plugin:2.0.0'
+    }
+}
+
+plugins {
+    id 'org.ajoberstar.grgit' version '3.0.0'
+    id 'com.betomorrow.xamarin.sonarqube' version '1.0.0'
+}
+
+apply plugin: 'xamarin-check-plugin'
+apply plugin: 'xamarin-library-plugin'
+apply plugin: 'xamarin-nunit-plugin'
+
+def targetVersion = "1.0"
+def prerelease = false
+
+def revnum = 0
+version = prerelease ? "${targetVersion}.${revnum}-pre" : "${targetVersion}.${revnum}"
+
+project.ext {
+    nugetVersion = "5.0.2"
+}
+
+nunit {
+    format = "nunit2"
+}
+
+publish {
+    remote {
+        url = project.hasProperty('urlNugetNexus') ? project.property('urlNugetNexus') : ''
+        apiKey = project.hasProperty('apiKeyNugetNexus') ? project.property('apiKeyNugetNexus') : ''
+    }
+}
+
+nuspec {
+
+    authors = "BeTomorrow"
+    owners = "Pole-Emploi"
+    description = "mylib Library for Xamarin applications"
+    copyright = "Copyright 2020 BeTomorrow"
+
+    packages {
+        "default" {
+            title = "mylib"
+            packageId = "mylib"
+
+            dependencies {                
+                "MonoAndroid10" {
+                    dependency "Xamarin.Android.Support.v4:[28.0.0.3,)"
+                    dependency "Xamarin.Essentials:[1.5.3.2,)"
+                    dependency "Xamarin.Firebase.Common:[71.1610.4,)"
+                    dependency "Xamarin.Firebase.Iid.Interop:[71.1601.4,)"
+                    dependency "Xamarin.Firebase.Iid:[71.1710.4,)"
+                    dependency "Xamarin.Firebase.Messaging:[71.1740.4,)"
+                    dependency "Xamarin.GooglePlayServices.Base:[71.1610.4,)"
+                    dependency "Xamarin.GooglePlayServices.Basement:[71.1620.4,)"
+                    dependency "Xamarin.GooglePlayServices.Location:[71.1600.4,)"
+                    dependency "Xam.PE.Normalization:[1.1.40,)"
+                    dependency "Plugin.CurrentActivity:[1.0.1,)"
+                    dependency "Xam.PE.Localization:[1.0.22,)"
+                    dependency "Xam.PE.CrossDevice:[2.8.288,)"
+                    dependency "Xam.PE.Application:[1.2.34,)"
+                    dependency "Plugin.Permissions:[2.1.0,)"
+                    dependency "Xam.PE.Permissions:[2.8.94,)"
+                    dependency "AndHUD:[1.2.0,)"
+                    dependency "Xam.PE.Utils:[2.7.122,)"
+                    dependency "Xam.PE.Dialogs:[1.4.122,)"
+                    dependency "Xam.PE.LoggerFacade:[1.5.43,)"
+                    dependency "Autofac:[3.5.2,)"
+                    dependency "Xam.PE.Time:[1.2.58,)"
+                    dependency "NodaTime:[2.4.4,)"
+                    dependency "Xam.PE.Tasks:[1.1.54,)"
+                    dependency "Xamarin.JavaX.Inject:[1.0.0,)"
+                }               
+                 
+                "Xamarin.iOS10" {
+                    dependency "Xamarin.Essentials:[1.5.3.2,)"
+                }
+            }
+            
+            assemblies {
+                target {
+                    dest "lib/netstandard2.0"
+                    includes "mylib", "mylib.Abstraction"
+                }
+
+                target {
+                    dest "lib/MonoAndroid10/"
+                    includes "mylib.Droid", "mylib.Abstraction"
+                }
+
+                target {
+                    dest "lib/Xamarin.iOS10/"
+                    includes "mylib.iOS", "mylib.Abstraction"
+                }
+            }
+        }
+
+    }
+}
+
+checkVersion {
+    currentBranch = project.hasProperty('currentBranch') ? project.property('currentBranch') : ''
+}
+
+checkDependenciesCsprojNuspec {
+    notCheckedDependencies = []
+}
+
+checkDependenciesExtension {
+    dependenciesToBeNotChecked = []
+}
+
+sonarqube {
+    projectKey = "mylib"
+ 
+    url = project.hasProperty('urlSonarQube') ? project.property('urlSonarQube') : ''
+    authenticationToken = project.hasProperty('authTokenSonarQube') ? project.property('authTokenSonarQube') : ''
+}
+
+task tagLib {
+    description = 'Tags the current head with the project\'s version.'
+    doLast {
+        def tag = grgit.tag.list().find { tag -> tag.name == "builds/v${version}" } 
+        if(tag == null) {
+            grgit.tag.add {
+                name = "builds/v${version}"
+                message = "Release of ${version}"
+            }
+            grgit.push(tags: true)
+        }
+
+    }
+}
+
+wrapper {
+    gradleVersion = '5.5.1'
+}

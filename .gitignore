@@ -2,3 +2,4 @@
 .vs
 dist
 *.nuspec
+.bitrise.secrets.yml
